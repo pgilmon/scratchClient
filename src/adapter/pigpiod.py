@@ -174,6 +174,116 @@ class HC_SR04_Adapter(adapter.adapters.GPIOAdapter):
         """error"""
         if debug:
             print("error", value)
-        self.sendValue( '"'+ value + '"' )    
- 
-        
+        self.sendValue( '"'+ value + '"' )
+
+
+class HC_SR04_Array_Adapter(adapter.adapters.GPIOAdapter):
+    """Adapter for up to 5 HC_SR04"""
+
+    NO_OF_SENSORS = 5
+
+    mandatoryParameters = {'poll.interval'}
+
+    def __init__(self):
+        adapter.adapters.GPIOAdapter.__init__(self)
+
+    def setActive(self, state):
+        adapter.adapters.GPIOAdapter.setActive(self, state)
+
+    def run(self):
+        _del = float(self.parameters['poll.interval'])
+        if _del < 0.02:
+            _del = 0.02
+
+        hc_sr04s = []
+        for i in range(self.NO_OF_SENSORS):
+            gpio_trigger = self.getChannelByAlias('trigger' + i)
+            gpio_echo = self.getChannelByAlias('echo' + i)
+
+            try:
+                hc_sr04s[i] = HC_SR04(gpio_trigger.portNumber, gpio_echo.portNumber)
+            except HC_SR04_Error as e:
+                logger.error("{name:s}: Error in connecting to pigpiod {msg:s}".format(name=self.name,
+                                                                                       msg=e.value))
+                self.error(e.value)
+                return
+
+        last_times = [None] * self.NO_OF_SENSORS
+        last_errors = None * self.NO_OF_SENSORS
+        while not self.stopped():
+            #
+            self.delay(_del)
+            #
+            for i in range(self.NO_OF_SENSORS):
+                try:
+                    time = hc_sr04s[i].measure()
+                    error = ''
+                except HC_SR04_Error as e:
+                    logger.error(
+                        "{name:s}: Error in response from HC-SR04[{index:d}] {msg:s}".format(
+                            name=self.name, msg=e.value, index=i))
+                    error = e.value
+                    time = 0
+
+                if time > 20000:
+                    error = "time too long > 20ms"
+                    time = 0
+
+                if last_errors[i] != error:
+                    getattr(self, 'error' + i)(error)
+                    last_errors[i] = error
+
+                if last_times[i] != time:
+                    getattr(self, 'time' + i)(time)
+                    last_times[i] = time
+
+        for i in range(self.NO_OF_SENSORS):
+            hc_sr04s[i].stop()
+
+    def time1(self, value):
+        """receives measured time in microseconds, sends seconds towards scratch"""
+        if debug:
+            print("time1", value)
+        self.sendValue(float(value) / 1000000.0)
+
+    def error1(self, value):
+        """error"""
+        if debug:
+            print("error1", value)
+        self.sendValue('"' + value + '"')
+
+    def time2(self, value):
+        """receives measured time in microseconds, sends seconds towards scratch"""
+        if debug:
+            print("time2", value)
+        self.sendValue(float(value) / 1000000.0)
+
+    def error2(self, value):
+        """error"""
+        if debug:
+            print("error2", value)
+        self.sendValue('"' + value + '"')
+
+    def time3(self, value):
+        """receives measured time in microseconds, sends seconds towards scratch"""
+        if debug:
+            print("time3", value)
+        self.sendValue(float(value) / 1000000.0)
+
+    def error3(self, value):
+        """error"""
+        if debug:
+            print("error3", value)
+        self.sendValue('"' + value + '"')
+
+    def time0(self, value):
+        """receives measured time in microseconds, sends seconds towards scratch"""
+        if debug:
+            print("time0", value)
+        self.sendValue(float(value) / 1000000.0)
+
+    def error0(self, value):
+        """error"""
+        if debug:
+            print("error0", value)
+        self.sendValue('"' + value + '"')
